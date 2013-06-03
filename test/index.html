@@ -1,0 +1,25 @@
+<html>
+<head>
+	<title>jQuery.ODataFilterUI</title>
+</head>
+
+<body>
+	<input type="text" id="filter" />
+	<input type="button" value="Get OData String" onclick="alert(window.Model.getODataFilter());" />
+
+	<script type="text/javascript" src="lib/jquery-1.10.1.js"></script>
+	<script type="text/javascript" src="lib/knockout-2.2.1.debug.js"></script>
+	<script type="text/javascript" src="../src/jquery.odatafilterui.min.js"></script>
+	<script type="text/javascript">
+
+	window.Model = $("#filter").oDataFilterUI({ Fields: [ 
+		{ text: "First Name", value: "FirstName", type: "string" },
+		{ text: "Last Name", value: "LastName", type: "string" }, 
+		{ text: "Age", value: "Age", type: "int" },
+		{ text: "Is Activated", value: "IsActivated", type: "bool" }]
+	}).Model;
+
+	</script>
+
+</body>
+</html>
