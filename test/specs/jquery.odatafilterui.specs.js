@@ -68,6 +68,37 @@ describe("OData Filter UI", function () {
 				});	
 
 			})
+
+			describe("Pre-existing model with no rows", function () {
+
+				beforeEach(function () {
+					filterControl = $("#filter").oDataFilterUI({ Fields: fields });
+					model = filterControl.Model;
+
+					// Now reset UI
+					$('#target').remove();
+					var target = $('<div>', { id: 'target' }).appendTo(document.body);
+					$( '<input>', { id: 'filter', type: 'text' } ).appendTo(target);
+
+					model.FilterRows([]);
+
+					filterControl = $("#filter").oDataFilterUI({ Model: model });
+				});
+
+				it("Should let you add new filters", function () {
+					container = $("#filter").parent();
+					message = $("#filter").next();
+
+					addAnother = message.next();
+					addAnother.click();
+
+					row = container.find("ol");
+
+					expect(row.length).toEqual(1);
+				});	
+
+			})
+
 		});
 
 		describe("General", function () {
@@ -169,357 +200,423 @@ describe("OData Filter UI", function () {
 
 		var model, container, rowContainer, row, field, operator, value, remove, addAnother;
 
-		beforeEach(function () {
-			filterControl = $("#filter").oDataFilterUI({ Fields: [ 
-				{ text: "First Name", value: "FirstName", type: "string" },
-				{ text: "Last Name", value: "LastName", type: "string" }, 
-				{ text: "Age", value: "Age", type: "int" },
-				{ text: "Is Activated", value: "IsActivated", type: "bool" }]
-			});
-			model = filterControl.Model;
+		describe("With custom fieldname modifier function", function () {
 
-			container = $("#filter").parent();
-			rowContainer = $("#filter").next();
-			addAnother = rowContainer.next();
-		});
+			beforeEach(function () {
+				filterControl = $("#filter").oDataFilterUI(
+					{ 
+						Fields: [ 
+							{ text: "First Name", value: "FirstName", type: "string" },
+							{ text: "Tags", value: "Tags", type: "string" }, 
+							{ text: "Age", value: "Age", type: "int" },
+							{ text: "Is Activated", value: "IsActivated", type: "bool" }],
+						fieldNameModifier: function (fieldName) {
+							if (fieldName == "Tags") 
+							{
+								return fieldName;
+							}
+							
+							return "[" + fieldName + "]"
+						}
+					});
 
-		describe("Clicking the add link", function () {
-			
-			describe("When there are no rows", function () {
+				model = filterControl.Model;
 
-				beforeEach(function() {
-					row = container.find("ol");
-					removeButton = row.find(".filterRemove");
-					removeButton.click();
+				container = $("#filter").parent();
+				rowContainer = $("#filter").next();
+				addAnother = rowContainer.next();
 
-					addAnother.click();
-				});
-
-				it("Should remove the 'no filters' message", function () {
-					var message = container.find("span").first();
-					expect(message.length).toEqual(0);
-				});
-
-			});
-
-			describe("When there are existing rows", function () {
-
-				beforeEach(function() {
-					addAnother.click();
-				});
-
-				it("Should add a new row to the UI", function () {
-					row = container.find("ol");
-					expect(row.length).toEqual(2);
-				})
-
-				it("Should add a new entry to the model", function () {
-					expect(model.FilterRows().length).toEqual(2);
-				})
-
-			});
-
-
-
-		});
-
-		describe("Clicking the remove link", function () {
-
-			var removeButton;
-			describe("When there is only one row", function () {
-
-				beforeEach(function() {
-					row = container.find("ol").last();
-					removeButton = row.find(".filterRemove");
-					removeButton.click();
-				});
-
-				it("should remove the row from the ui and display a message", function () {
-					var message = container.find("span").first();
-					expect(message.length).toEqual(1);
-					expect(message.html()).toEqual("There are currently no filters applied");
-				});
-
-			});
-
-			describe("When there is more than one row", function () {
-
-				beforeEach(function() {
-					addAnother.click();
-
-					row = container.find("ol").last();
-					removeButton = row.find(".filterRemove");
-					removeButton.click();
-				});
-
-				it("should remove the row from the ui", function () {
-					var rows = container.find("ol");
-					expect(rows.length).toEqual(1);
-				});
-
-				it("should remove the row from the model", function () {
-					var rows = container.find("ol");
-					expect(model.FilterRows().length).toEqual(1);
-				});
-
-			});
-
-		});
-
-		describe("Selecting a string field", function () {
-
-			beforeEach(function() {
-				row = container.find("ol").last();
-
-				// Ensure that we are changing from a different value ui
+				row = container.find("ol").last();				
 				row.find("select.filterField option").filter(function() {
-					    return $(this).text() == "Age"; 
-					}).prop('selected', true);
-					row.find("select.filterField").change();
-
-				row.find("select.filterField option").filter(function() {
-					    return $(this).text() == "First Name"; 
-					}).prop('selected', true);
-					row.find("select.filterField").change();
-			});
-
-			it("Should change the value input to a text field", function () {
-				row = container.find("ol");
-				expect(row.find("input.filterValue").attr("type")).toEqual("text");
-			})
-
-			it("Should only allow eq and ne and string function operators", function () {
-				row = container.find("ol");
-				var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
-					return $(item).attr("value");
-				})
-				expect(values).toEqual(['eq', 'ne', 'startswith', 'endswith', 'contains']);
-			})
-
-		});
-
-		describe("Selecting an int field", function () {
-
-			beforeEach(function() {
-				row = container.find("ol").last();
-
-				// Ensure that we are changing from a different value ui
-				row.find("select.filterField option").filter(function() {
-				    return $(this).text() == "Is Activated"; 
+				    return $(this).text() == "First Name"; 
 				}).prop('selected', true);
 				row.find("select.filterField").change();
+				row.find("input.filterValue").val("Pete").change();
 
+				addAnother.click();
+				row = container.find("ol").last();				
 				row.find("select.filterField option").filter(function() {
-				    return $(this).text() == "Age"; 
-				}).prop('selected', true);				
-				row.find("select.filterField").change();
-			});
-
-			it("Should change the value input to a number field", function () {
-				row = container.find("ol");
-				expect(row.find("input.filterValue").attr("type")).toEqual("number");
-			})
-
-			it("Should allow all comparison operators", function () {
-				row = container.find("ol");
-				var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
-					return $(item).attr("value");
-				})
-				expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
-			})
-
-		});
-
-		describe("Selecting an bool field", function () {
-
-			beforeEach(function() {
-				row = container.find("ol").last();
-
-				// Ensure that we are changing from a different value ui
-				row.find("select.filterField option").filter(function() {
-				    return $(this).text() == "Age"; 
+				    return $(this).text() == "Tags"; 
 				}).prop('selected', true);
 				row.find("select.filterField").change();
+				row.find("input.filterValue").val("Best Practice").change();
 
-				row.find("select.filterField option").filter(function() {
-				    return $(this).text() == "Is Activated"; 
-				}).prop('selected', true);				
-				row.find("select.filterField").change();
 			});
 
-			it("Should change the value field to a checkbox", function () {
-				row = container.find("ol");
-				expect(row.find("input.filterValue").attr("type")).toEqual("checkbox");
-			})
-
-			it("Should only allow eq and ne operators", function () {
-				row = container.find("ol");
-				var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
-					return $(item).attr("value");
-				})
-				expect(values).toEqual(['eq', 'ne']);
-			})
+			it("should use the function when building the odata string", function () {
+				expect(model.getODataFilter()).toEqual("$filter=[FirstName] eq 'Pete' and Tags eq 'Best Practice'")
+			});
 
 		});
 
-		describe("Building the OData filter string", function () {
+		describe("With common settings", function () {
 
-			describe("With default values", function () {
-
-				beforeEach(function () {
-					row = container.find("ol").last(); 
+			beforeEach(function () {
+				filterControl = $("#filter").oDataFilterUI({ Fields: [ 
+					{ text: "First Name", value: "FirstName", type: "string" },
+					{ text: "Last Name", value: "LastName", type: "string" }, 
+					{ text: "Age", value: "Age", type: "int" },
+					{ text: "Is Activated", value: "IsActivated", type: "bool" }]
 				});
+				model = filterControl.Model;
 
-				it("Should handle undefined string values correctly",function ()
-				{					
-					row.find("select.filterField option").filter(function() {
-					    return $(this).text() == "First Name"; 
-					}).prop('selected', true);
-					row.find("select.filterField").change();
-
-					expect(model.getODataFilter()).toEqual("$filter=FirstName eq ''");
-				});
-
-				it("Should handle undefined int values correctly",function ()
-				{					
-					row.find("select.filterField option").filter(function() {
-					    return $(this).text() == "Age"; 
-					}).prop('selected', true);
-					row.find("select.filterField").change();
-
-					expect(model.getODataFilter()).toEqual("$filter=Age eq 0");
-				});
-
-				it("Should handle undefined bool values correctly",function ()
-				{					
-					row.find("select.filterField option").filter(function() {
-					    return $(this).text() == "Is Activated"; 
-					}).prop('selected', true);
-					row.find("select.filterField").change();
-
-					expect(model.getODataFilter()).toEqual("$filter=IsActivated eq false");
-				});
-
+				container = $("#filter").parent();
+				rowContainer = $("#filter").next();
+				addAnother = rowContainer.next();
 			});
 
-			describe("With string fields", function () {
-
-				describe("Comparison operators", function () {
+			describe("Clicking the add link", function () {
+				
+				describe("When there are no rows", function () {
 
 					beforeEach(function() {
-						row = container.find("ol").last();
-						
-						row.find("select.filterField option").filter(function() {
-						    return $(this).text() == "First Name"; 
-						}).prop('selected', true);
-						row.find("select.filterField").change();
-
-						row.find("select.filterOperator").val("eq").change();
-						row.find("input.filterValue").val("Pete").change();
+						row = container.find("ol");
+						removeButton = row.find(".filterRemove");
+						removeButton.click();
 
 						addAnother.click();
-						row = container.find("ol").last();
-
-						row.find("select.filterField option").filter(function() {
-						    //may want to use $.trim in here
-						    return $(this).text() == "Last Name"; 
-						}).prop('selected', true);
-						row.find("select.filterField").change();
-
-						row.find("select.filterOperator").val("eq").change();
-						row.find("input.filterValue").val("Smith").change();
 					});
 
-					it("Should construct the odata string, 'and'ing each filter",function ()
-					{
-						expect(model.getODataFilter()).toEqual("$filter=FirstName eq 'Pete' and LastName eq 'Smith'");
+					it("Should remove the 'no filters' message", function () {
+						var message = container.find("span").first();
+						expect(message.length).toEqual(0);
 					});
 
 				});
 
-				describe("String functions", function () {
+				describe("When there are existing rows", function () {
 
 					beforeEach(function() {
-						row = container.find("ol").last();
-						
-						row.find("select.filterField option").filter(function() {
-						    return $(this).text() == "First Name"; 
-						}).prop('selected', true);
-						row.find("select.filterField").change();
-						row.find("input.filterValue").val("Pete").change();
+						addAnother.click();
 					});
 
-					it("Should construct the odata string correctlty with the startswith function",function ()
-					{
-						row.find("select.filterOperator").val("startswith").change();
-						expect(model.getODataFilter()).toEqual("$filter=startswith(FirstName,'Pete')");
-					});
+					it("Should add a new row to the UI", function () {
+						row = container.find("ol");
+						expect(row.length).toEqual(2);
+					})
 
-					it("Should construct the odata string correctlty with the endswith function",function ()
-					{
-						row.find("select.filterOperator").val("endswith").change();
-						expect(model.getODataFilter()).toEqual("$filter=endswith(FirstName,'Pete')");
-					});
+					it("Should add a new entry to the model", function () {
+						expect(model.FilterRows().length).toEqual(2);
+					})
 
-					it("Should construct the odata string correctlty with the substringof function",function ()
-					{
-						row.find("select.filterOperator").val("contains").change();
-						expect(model.getODataFilter()).toEqual("$filter=substringof('Pete',FirstName)");
-					});
 				});
 
 			});
 
-			describe("With integer fields", function () {
+			describe("Clicking the remove link", function () {
+
+				var removeButton;
+				describe("When there is only one row", function () {
+
+					beforeEach(function() {
+						row = container.find("ol").last();
+						removeButton = row.find(".filterRemove");
+						removeButton.click();
+					});
+
+					it("should remove the row from the ui and display a message", function () {
+						var message = container.find("span").first();
+						expect(message.length).toEqual(1);
+						expect(message.html()).toEqual("There are currently no filters applied");
+					});
+
+				});
+
+				describe("When there is more than one row", function () {
+
+					beforeEach(function() {
+						addAnother.click();
+
+						row = container.find("ol").last();
+						removeButton = row.find(".filterRemove");
+						removeButton.click();
+					});
+
+					it("should remove the row from the ui", function () {
+						var rows = container.find("ol");
+						expect(rows.length).toEqual(1);
+					});
+
+					it("should remove the row from the model", function () {
+						var rows = container.find("ol");
+						expect(model.FilterRows().length).toEqual(1);
+					});
+
+				});
+
+			});
+
+			describe("Selecting a string field", function () {
 
 				beforeEach(function() {
 					row = container.find("ol").last();
 
+					// Ensure that we are changing from a different value ui
+					row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "Age"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+
+					row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "First Name"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+				});
+
+				it("Should change the value input to a text field", function () {
+					row = container.find("ol");
+					expect(row.find("input.filterValue").attr("type")).toEqual("text");
+				})
+
+				it("Should only allow eq and ne and string function operators", function () {
+					row = container.find("ol");
+					var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
+						return $(item).attr("value");
+					})
+					expect(values).toEqual(['eq', 'ne', 'startswith', 'endswith', 'contains']);
+				})
+
+			});
+
+			describe("Selecting an int field", function () {
+
+				beforeEach(function() {
+					row = container.find("ol").last();
+
+					// Ensure that we are changing from a different value ui
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "Is Activated"; 
+					}).prop('selected', true);
+					row.find("select.filterField").change();
+
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "Age"; 
+					}).prop('selected', true);				
+					row.find("select.filterField").change();
+				});
+
+				it("Should change the value input to a number field", function () {
+					row = container.find("ol");
+					expect(row.find("input.filterValue").attr("type")).toEqual("number");
+				})
+
+				it("Should allow all comparison operators", function () {
+					row = container.find("ol");
+					var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
+						return $(item).attr("value");
+					})
+					expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+				})
+
+			});
+
+			describe("Selecting an bool field", function () {
+
+				beforeEach(function() {
+					row = container.find("ol").last();
+
+					// Ensure that we are changing from a different value ui
 					row.find("select.filterField option").filter(function() {
 					    return $(this).text() == "Age"; 
 					}).prop('selected', true);
 					row.find("select.filterField").change();
 
-					row.find("select.filterOperator").val("eq").change();
-					row.find("input.filterValue").val(16).change();
-				});
-
-				it("Should construct the odata string correctly",function ()
-				{
-					expect(model.getODataFilter()).toEqual("$filter=Age eq 16");
-				});
-				
-			});
-
-			describe("With bool fields", function () {
-
-				beforeEach(function() {
-					row = container.find("ol").last();
-
 					row.find("select.filterField option").filter(function() {
 					    return $(this).text() == "Is Activated"; 
-					}).prop('selected', true);
-					row.find("select.filterField").change();		
-								
-					row.find("select.filterOperator").val("eq").change();
+					}).prop('selected', true);				
+					row.find("select.filterField").change();
 				});
 
-				it("Should construct the odata string correctly for true values",function ()
-				{
-					// need to make sure the checkbox is in the opposite state, then clicking it will change and trigger knockout
-					row.find("input.filterValue").prop('checked', false)
-					row.find("input.filterValue").click();
-					expect(model.getODataFilter()).toEqual("$filter=IsActivated eq true");
+				it("Should change the value field to a checkbox", function () {
+					row = container.find("ol");
+					expect(row.find("input.filterValue").attr("type")).toEqual("checkbox");
+				})
+
+				it("Should only allow eq and ne operators", function () {
+					row = container.find("ol");
+					var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
+						return $(item).attr("value");
+					})
+					expect(values).toEqual(['eq', 'ne']);
+				})
+
+			});
+
+			describe("Building the OData filter string", function () {
+
+				describe("With default values", function () {
+
+					beforeEach(function () {
+						row = container.find("ol").last(); 
+					});
+
+					it("Should handle undefined string values correctly",function ()
+					{					
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "First Name"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+
+						expect(model.getODataFilter()).toEqual("$filter=FirstName eq ''");
+					});
+
+					it("Should handle undefined int values correctly",function ()
+					{					
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "Age"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+
+						expect(model.getODataFilter()).toEqual("$filter=Age eq 0");
+					});
+
+					it("Should handle undefined bool values correctly",function ()
+					{					
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "Is Activated"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+
+						expect(model.getODataFilter()).toEqual("$filter=IsActivated eq false");
+					});
+
 				});
 
-				it("Should construct the odata string correctly for false values",function ()
-				{
-					// need to make sure the checkbox is in the opposite state, then clicking it will change and trigger knockout
-					row.find("input.filterValue").prop('checked', true).change();
-					row.find("input.filterValue").click();
-					expect(model.getODataFilter()).toEqual("$filter=IsActivated eq false");
+				describe("With no filters", function () {
+
+					beforeEach(function () {
+						row = container.find("ol").last(); 
+						removeButton = row.find(".filterRemove");
+						removeButton.click();
+					});
+
+					it("Should return an empty string",function ()
+					{					
+						expect(model.getODataFilter()).toEqual("");
+					});
+
 				});
-				
+
+				describe("With string fields", function () {
+
+					describe("Comparison operators", function () {
+
+						beforeEach(function() {
+							row = container.find("ol").last();
+							
+							row.find("select.filterField option").filter(function() {
+							    return $(this).text() == "First Name"; 
+							}).prop('selected', true);
+							row.find("select.filterField").change();
+
+							row.find("select.filterOperator").val("eq").change();
+							row.find("input.filterValue").val("Pete").change();
+
+							addAnother.click();
+							row = container.find("ol").last();
+
+							row.find("select.filterField option").filter(function() {
+							    //may want to use $.trim in here
+							    return $(this).text() == "Last Name"; 
+							}).prop('selected', true);
+							row.find("select.filterField").change();
+
+							row.find("select.filterOperator").val("eq").change();
+							row.find("input.filterValue").val("Smith").change();
+						});
+
+						it("Should construct the odata string, 'and'ing each filter",function ()
+						{
+							expect(model.getODataFilter()).toEqual("$filter=FirstName eq 'Pete' and LastName eq 'Smith'");
+						});
+
+					});
+
+					describe("String functions", function () {
+
+						beforeEach(function() {
+							row = container.find("ol").last();
+							
+							row.find("select.filterField option").filter(function() {
+							    return $(this).text() == "First Name"; 
+							}).prop('selected', true);
+							row.find("select.filterField").change();
+							row.find("input.filterValue").val("Pete").change();
+						});
+
+						it("Should construct the odata string correctlty with the startswith function",function ()
+						{
+							row.find("select.filterOperator").val("startswith").change();
+							expect(model.getODataFilter()).toEqual("$filter=startswith(FirstName,'Pete')");
+						});
+
+						it("Should construct the odata string correctlty with the endswith function",function ()
+						{
+							row.find("select.filterOperator").val("endswith").change();
+							expect(model.getODataFilter()).toEqual("$filter=endswith(FirstName,'Pete')");
+						});
+
+						it("Should construct the odata string correctlty with the substringof function",function ()
+						{
+							row.find("select.filterOperator").val("contains").change();
+							expect(model.getODataFilter()).toEqual("$filter=substringof('Pete',FirstName)");
+						});
+					});
+
+				});
+
+				describe("With integer fields", function () {
+
+					beforeEach(function() {
+						row = container.find("ol").last();
+
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "Age"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+
+						row.find("select.filterOperator").val("eq").change();
+						row.find("input.filterValue").val(16).change();
+					});
+
+					it("Should construct the odata string correctly",function ()
+					{
+						expect(model.getODataFilter()).toEqual("$filter=Age eq 16");
+					});
+					
+				});
+
+				describe("With bool fields", function () {
+
+					beforeEach(function() {
+						row = container.find("ol").last();
+
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "Is Activated"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();		
+									
+						row.find("select.filterOperator").val("eq").change();
+					});
+
+					it("Should construct the odata string correctly for true values",function ()
+					{
+						// need to make sure the checkbox is in the opposite state, then clicking it will change and trigger knockout
+						row.find("input.filterValue").prop('checked', false)
+						row.find("input.filterValue").click();
+						expect(model.getODataFilter()).toEqual("$filter=IsActivated eq true");
+					});
+
+					it("Should construct the odata string correctly for false values",function ()
+					{
+						// need to make sure the checkbox is in the opposite state, then clicking it will change and trigger knockout
+						row.find("input.filterValue").prop('checked', true).change();
+						row.find("input.filterValue").click();
+						expect(model.getODataFilter()).toEqual("$filter=IsActivated eq false");
+					});
+					
+				});
+
 			});
 
 		});

@@ -3,7 +3,10 @@
     $.fn.oDataFilterUI = function (options)
     {
         var settings = $.extend({
-            Fields: []  
+            Fields: [],
+            fieldNameModifier: function (fieldname) { 
+                return fieldname; 
+            }
         }, options );
 
         // Convert input to hidden
@@ -109,7 +112,8 @@
             for (var index in filterRows())
             {
                 var row = filterRows()[index];
-                var part = row.FieldName() + " " + row.Operator() + " ";
+                var fieldName = settings.fieldNameModifier(row.FieldName());
+                var part = fieldName + " " + row.Operator() + " ";
                 switch(row.Field().type)
                 {
                     case "string":
@@ -117,13 +121,13 @@
                         switch (row.Operator())
                         {
                             case "startswith":
-                                part = "startswith(" + row.FieldName() + "," + stringValue + ")";
+                                part = "startswith(" + fieldName + "," + stringValue + ")";
                                 break;
                             case "endswith":
-                                part = "endswith(" + row.FieldName() + "," + stringValue + ")";
+                                part = "endswith(" + fieldName + "," + stringValue + ")";
                                 break;
                             case "contains":
-                                part = "substringof(" + stringValue + "," + row.FieldName() + ")";
+                                part = "substringof(" + stringValue + "," + fieldName + ")";
                                 break;
                             default:
                                 part = part + "'" + (row.Value() ? row.Value() : "") + "'";
@@ -141,7 +145,13 @@
                 }
             }
 
-            return "$filter=" + filters.join(" and ");
+            if (filters.length > 0)
+            {
+                return "$filter=" + filters.join(" and ");    
+            }
+
+            return "";
+            
         }, null, { deferEvaluation : true });
 
         if (settings.Model)
