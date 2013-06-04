@@ -32,18 +32,42 @@ describe("OData Filter UI", function () {
 		describe("With settings", function () {
 			var fields, model;
 
-			beforeEach(function () {
-				fields = [
-				{ text: "First Name", value: "FirstName" },
-				{ text: "Last Name", value: "LastName" }
-				];
-				filterControl = $("#filter").oDataFilterUI({ Fields: fields });
-				model = filterControl.Model;
-			});
+			describe("Field settings", function () {
 
-			it("Should initialise the fields list", function () {
-				expect(model.Fields()).toEqual(fields);
-			});
+				beforeEach(function () {
+					fields = [
+					{ text: "First Name", value: "FirstName" },
+					{ text: "Last Name", value: "LastName" }];
+
+					filterControl = $("#filter").oDataFilterUI({ Fields: fields });
+					model = filterControl.Model;
+				});
+
+				it("Should initialise the fields list", function () {
+					expect(model.Fields()).toEqual(fields);
+				});	
+
+			})
+
+			describe("Pre-existing model", function () {
+
+				beforeEach(function () {
+					filterControl = $("#filter").oDataFilterUI({ Fields: fields });
+					model = filterControl.Model;
+
+					// Now reset UI
+					$('#target').remove();
+					var target = $('<div>', { id: 'target' }).appendTo(document.body);
+					$( '<input>', { id: 'filter', type: 'text' } ).appendTo(target);
+
+					filterControl = $("#filter").oDataFilterUI({ Model: model });
+				});
+
+				it("Should use the given model", function () {
+					expect(filterControl.Model).toBe(model);
+				});	
+
+			})
 		});
 
 		describe("General", function () {

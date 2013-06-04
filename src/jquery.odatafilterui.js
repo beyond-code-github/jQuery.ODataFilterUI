@@ -3,7 +3,7 @@
     $.fn.oDataFilterUI = function (options)
     {
         var settings = $.extend({
-            Fields: []      
+            Fields: []  
         }, options );
 
         // Convert input to hidden
@@ -139,12 +139,19 @@
             return "$filter=" + filters.join(" and ");
         }, null, { deferEvaluation : true });
 
-        this.Model = {};
-        this.Model.FilterRows = filterRows;
-        this.Model.Fields = fields;
-        this.Model.removeFilter = removeFilter;
-        this.Model.addAnother = addAnother;
-        this.Model.getODataFilter = getODataFilter;
+        if (settings.Model)
+        {
+            this.Model = settings.Model;
+        }
+        else
+        {
+            this.Model = {};
+            this.Model.FilterRows = filterRows;
+            this.Model.Fields = fields;
+            this.Model.removeFilter = removeFilter;
+            this.Model.addAnother = addAnother;
+            this.Model.getODataFilter = getODataFilter;
+        }
 
         ko.applyBindings(this.Model, container.get(0));
 
