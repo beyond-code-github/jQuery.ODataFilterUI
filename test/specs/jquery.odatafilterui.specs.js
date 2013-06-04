@@ -242,12 +242,12 @@ describe("OData Filter UI", function () {
 				expect(row.find("input.filterValue").attr("type")).toEqual("text");
 			})
 
-			it("Should only allow eq and ne operators", function () {
+			it("Should only allow eq and ne and string function operators", function () {
 				row = container.find("ol");
 				var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
 					return $(item).attr("value");
 				})
-				expect(values).toEqual(['eq', 'ne']);
+				expect(values).toEqual(['eq', 'ne', 'startswith', 'endswith', 'contains']);
 			})
 
 		});
@@ -274,7 +274,7 @@ describe("OData Filter UI", function () {
 				expect(row.find("input.filterValue").attr("type")).toEqual("number");
 			})
 
-			it("Should allow all operators", function () {
+			it("Should allow all comparison operators", function () {
 				row = container.find("ol");
 				var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
 					return $(item).attr("value");
@@ -358,33 +358,68 @@ describe("OData Filter UI", function () {
 
 			describe("With string fields", function () {
 
-				beforeEach(function() {
-					row = container.find("ol").last();
-					
-					row.find("select.filterField option").filter(function() {
-					    return $(this).text() == "First Name"; 
-					}).prop('selected', true);
-					row.find("select.filterField").change();
+				describe("Comparison operators", function () {
 
-					row.find("select.filterOperator").val("eq").change();
-					row.find("input.filterValue").val("Pete").change();
+					beforeEach(function() {
+						row = container.find("ol").last();
+						
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "First Name"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
 
-					addAnother.click();
-					row = container.find("ol").last();
+						row.find("select.filterOperator").val("eq").change();
+						row.find("input.filterValue").val("Pete").change();
 
-					row.find("select.filterField option").filter(function() {
-					    //may want to use $.trim in here
-					    return $(this).text() == "Last Name"; 
-					}).prop('selected', true);
-					row.find("select.filterField").change();
+						addAnother.click();
+						row = container.find("ol").last();
 
-					row.find("select.filterOperator").val("eq").change();
-					row.find("input.filterValue").val("Smith").change();
+						row.find("select.filterField option").filter(function() {
+						    //may want to use $.trim in here
+						    return $(this).text() == "Last Name"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+
+						row.find("select.filterOperator").val("eq").change();
+						row.find("input.filterValue").val("Smith").change();
+					});
+
+					it("Should construct the odata string, 'and'ing each filter",function ()
+					{
+						expect(model.getODataFilter()).toEqual("$filter=FirstName eq 'Pete' and LastName eq 'Smith'");
+					});
+
 				});
 
-				it("Should construct the odata string, 'and'ing each filter",function ()
-				{
-					expect(model.getODataFilter()).toEqual("$filter=FirstName eq 'Pete' and LastName eq 'Smith'");
+				describe("String functions", function () {
+
+					beforeEach(function() {
+						row = container.find("ol").last();
+						
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "First Name"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+						row.find("input.filterValue").val("Pete").change();
+					});
+
+					it("Should construct the odata string correctlty with the startswith function",function ()
+					{
+						row.find("select.filterOperator").val("startswith").change();
+						expect(model.getODataFilter()).toEqual("$filter=startswith(FirstName,'Pete')");
+					});
+
+					it("Should construct the odata string correctlty with the endswith function",function ()
+					{
+						row.find("select.filterOperator").val("endswith").change();
+						expect(model.getODataFilter()).toEqual("$filter=endswith(FirstName,'Pete')");
+					});
+
+					it("Should construct the odata string correctlty with the substringof function",function ()
+					{
+						row.find("select.filterOperator").val("contains").change();
+						expect(model.getODataFilter()).toEqual("$filter=substringof('Pete',FirstName)");
+					});
 				});
 
 			});

@@ -64,6 +64,11 @@
                         result.push({ text: "Less than", value: "lt" });
                         result.push({ text: "Less than or equals", value: "le" });
                         break;
+                    case "string":
+                        result.push({ text: "Starts With", value: "startswith" });
+                        result.push({ text: "Ends With", value: "endswith" });
+                        result.push({ text: "Contains", value: "contains" });
+                        break;
                 }                
                 
                 return result;
@@ -94,7 +99,7 @@
             filterRows.push(createRow());
         };
 
-        var getODataFilter = function() {
+        var getODataFilter = ko.computed(function() {
             var filters = [];
             for (var index in filterRows())
             {
@@ -103,7 +108,21 @@
                 switch(row.Field().type)
                 {
                     case "string":
-                        part = part + "'" + (row.Value() ? row.Value() : "") + "'";
+                        var stringValue = "'" + (row.Value() ? row.Value() : "") + "'";
+                        switch (row.Operator())
+                        {
+                            case "startswith":
+                                part = "startswith(" + row.FieldName() + "," + stringValue + ")";
+                                break;
+                            case "endswith":
+                                part = "endswith(" + row.FieldName() + "," + stringValue + ")";
+                                break;
+                            case "contains":
+                                part = "substringof(" + stringValue + "," + row.FieldName() + ")";
+                                break;
+                            default:
+                                part = part + "'" + (row.Value() ? row.Value() : "") + "'";
+                        }
                         filters.push(part);
                         break;
                     case "int":
@@ -118,7 +137,7 @@
             }
 
             return "$filter=" + filters.join(" and ");
-        };
+        }, null, { deferEvaluation : true });
 
         this.Model = {};
         this.Model.FilterRows = filterRows;
