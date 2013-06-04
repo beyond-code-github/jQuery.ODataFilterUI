@@ -11,6 +11,11 @@
 
         // Append container
         var container = this.wrap($('<div>')).parent();
+        
+        var noFilterMessage = $("<span>").html("There are currently no filters applied").prependTo(container);
+        noFilterMessage.before("<!-- ko if: !FilterRows() || FilterRows().length == 0 -->")
+        noFilterMessage.after("<!-- /ko -->")
+     
         var rowContainer = $('<div>', { "data-bind": "foreach: FilterRows" }).insertAfter(this);
         var row = $('<ol>').appendTo(rowContainer);
         
@@ -89,7 +94,7 @@
         var fields = ko.observableArray(settings.Fields);
 
         var removeFilter = function (filter) {
-            if (filterRows().length > 1)
+            if (filterRows().length > 0)
             {
                 filterRows.remove(filter);
             }

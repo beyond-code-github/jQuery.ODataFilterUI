@@ -185,19 +185,41 @@ describe("OData Filter UI", function () {
 
 		describe("Clicking the add link", function () {
 			
-			beforeEach(function() {
-				addAnother.click();
+			describe("When there are no rows", function () {
+
+				beforeEach(function() {
+					row = container.find("ol");
+					removeButton = row.find(".filterRemove");
+					removeButton.click();
+
+					addAnother.click();
+				});
+
+				it("Should remove the 'no filters' message", function () {
+					var message = container.find("span").first();
+					expect(message.length).toEqual(0);
+				});
+
 			});
 
-			it("Should add a new row to the UI", function () {
-				row = container.find("ol");
+			describe("When there are existing rows", function () {
 
-				expect(row.length).toEqual(2);
-			})
+				beforeEach(function() {
+					addAnother.click();
+				});
 
-			it("Should add a new entry to the model", function () {
-				expect(model.FilterRows().length).toEqual(2);
-			})
+				it("Should add a new row to the UI", function () {
+					row = container.find("ol");
+					expect(row.length).toEqual(2);
+				})
+
+				it("Should add a new entry to the model", function () {
+					expect(model.FilterRows().length).toEqual(2);
+				})
+
+			});
+
+
 
 		});
 
@@ -212,10 +234,10 @@ describe("OData Filter UI", function () {
 					removeButton.click();
 				});
 
-				it("should do nothing", function () {
-					var rows = container.find("ol");
-					expect(rows.length).toEqual(1);
-					expect(model.FilterRows().length).toEqual(1);
+				it("should remove the row from the ui and display a message", function () {
+					var message = container.find("span").first();
+					expect(message.length).toEqual(1);
+					expect(message.html()).toEqual("There are currently no filters applied");
 				});
 
 			});
