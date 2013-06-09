@@ -31,6 +31,11 @@
         filterFieldNumberLi.before("<!-- ko if: Field() && Field().type == 'int' -->")
         filterFieldNumberLi.after("<!-- /ko -->")
 
+        var filterFieldDateLi = $('<input>', { class: "filterValue", type: "datetime-local", "data-bind": "value: Value" })
+            .appendTo(row).wrap($("<li>")).parent();
+        filterFieldDateLi.before("<!-- ko if: Field() && Field().type == 'datetime' -->")
+        filterFieldDateLi.after("<!-- /ko -->")
+
         var filterFieldBoolLi = $('<input>', { class: "filterValue", type: "checkbox", "data-bind": "checked: Value" })
             .appendTo(row).wrap($("<li>")).parent();
         filterFieldBoolLi.before("<!-- ko if: Field() && Field().type == 'bool' -->")
@@ -60,6 +65,7 @@
                 var fieldType = field() ? field().type : "string";
                 switch (fieldType) {
                     case "int":
+                    case "datetime":
                         result.push({ text: "Greater than", value: "gt" });
                         result.push({ text: "Greater than or equals", value: "ge" });
                         result.push({ text: "Less than", value: "lt" });
@@ -137,6 +143,10 @@
                         break;
                     case "int":
                         part = part + (row.Value() ? row.Value() : 0);
+                        filters.push(part);
+                        break;
+                    case "datetime":
+                        part = part + "datetime'" + (row.Value() ? row.Value() : "1753-01-01T00:00") + "'";
                         filters.push(part);
                         break;
                     case "bool":

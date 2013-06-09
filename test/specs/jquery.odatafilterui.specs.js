@@ -233,7 +233,8 @@ describe("OData Filter UI", function () {
 					{ text: "First Name", value: "FirstName", type: "string" },
 					{ text: "Last Name", value: "LastName", type: "string" }, 
 					{ text: "Age", value: "Age", type: "int" },
-					{ text: "Is Activated", value: "IsActivated", type: "bool" }]
+					{ text: "Is Activated", value: "IsActivated", type: "bool" },
+					{ text: "Date of Birth", value: "DateOfBirth", type: "datetime" }]
 				});
 				model = filterControl.Model;
 
@@ -425,6 +426,40 @@ describe("OData Filter UI", function () {
 
 			});
 
+			describe("Selecting a datetime field", function () {
+
+				beforeEach(function() {
+					addAnother.click();
+					row = container.find("ol").last();
+
+					// Ensure that we are changing from a different value ui
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "Is Activated"; 
+					}).prop('selected', true);
+					row.find("select.filterField").change();
+
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "Date of Birth"; 
+					}).prop('selected', true);				
+					row.find("select.filterField").change();
+				});
+
+				it("Should change the value input to a number field", function () {
+					row = container.find("ol");
+					expect(row.find("input.filterValue").attr("type")).toEqual("datetime-local");
+				})
+
+				it("Should allow all comparison operators", function () {
+					row = container.find("ol");
+					var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
+						return $(item).attr("value");
+					})
+					expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+				})
+
+			});
+
+
 			describe("Selecting a bool field", function () {
 
 				beforeEach(function() {
@@ -485,6 +520,16 @@ describe("OData Filter UI", function () {
 						row.find("select.filterField").change();
 
 						expect(model.getODataFilter()).toEqual("$filter=Age eq 0");
+					});
+
+					it("Should handle undefined date values correctly",function ()
+					{					
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "Date of Birth"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+
+						expect(model.getODataFilter()).toEqual("$filter=DateOfBirth eq datetime'1753-01-01T00:00'");
 					});
 
 					it("Should handle undefined bool values correctly",function ()
@@ -596,6 +641,28 @@ describe("OData Filter UI", function () {
 					it("Should construct the odata string correctly",function ()
 					{
 						expect(model.getODataFilter()).toEqual("$filter=Age eq 16");
+					});
+					
+				});
+
+				describe("With date fields", function () {
+
+					beforeEach(function() {
+						addAnother.click();
+						row = container.find("ol").last();
+
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "Date of Birth"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();
+
+						row.find("select.filterOperator").val("eq").change();
+						row.find("input.filterValue").val("1985-04-12T23:20:50").change();
+					});
+
+					it("Should construct the odata string correctly",function ()
+					{
+						expect(model.getODataFilter()).toEqual("$filter=DateOfBirth eq datetime'1985-04-12T23:20:50'");
 					});
 					
 				});
