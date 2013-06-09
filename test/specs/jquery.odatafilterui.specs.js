@@ -49,6 +49,19 @@ describe("OData Filter UI", function () {
 
 			})
 
+			describe("Existing filters", function () {
+
+				beforeEach(function () {
+					filterControl = $("#filter").oDataFilterUI({ Fields: fields });
+					model = filterControl.Model;
+				});
+
+				it("Should initialise the fields list", function () {
+					expect(model.Fields()).toEqual(fields);
+				});	
+
+			})
+
 			describe("Pre-existing model", function () {
 
 				beforeEach(function () {
@@ -127,7 +140,7 @@ describe("OData Filter UI", function () {
 				});
 
 				it("Should seed the rows list", function () {
-					expect(model.FilterRows().length).toEqual(1);
+					expect(model.FilterRows()).toBeTruthy();
 				});
 
 				it("Should bind the model with knockout", function () {
@@ -155,43 +168,6 @@ describe("OData Filter UI", function () {
 					expect(rowContainer.is("div")).toBeTruthy();
 					expect(rowContainer.attr("data-bind")).toEqual("foreach: FilterRows");
 				});
-
-				it("Should the add a blank filter row", function () {
-					row = container.find("ol");
-					expect(row.length).toEqual(1);
-				})
-
-				it("Should populate the filter row with a field drop down in an li", function () {
-					field = row.find("select.filterField");
-					expect(field.length).toEqual(1);
-					expect(field.parent().is("li")).toBeTruthy();
-				});
-
-				it("Should populate the filter row with an operator drop down in an li", function () {
-					operator = row.find("select.filterOperator");
-					expect(operator.length).toEqual(1);
-					expect(operator.parent().is("li")).toBeTruthy();
-				});
-
-				it("Should populate the filter row with a value field in an li", function () {
-					value = row.find("input.filterValue");
-					expect(value.length).toEqual(1);
-					expect(value.parent().is("li")).toBeTruthy();
-				});
-
-				it("Should populate the filter row with a remove link in an li", function () {
-					remove = row.find("a.filterRemove");
-					expect(remove.length).toEqual(1);
-					expect(remove.html()).toEqual("remove");
-					expect(remove.parent().is("li")).toBeTruthy();
-				});
-
-				it("Should add the button to allow adding new filter rows", function () {
-					addAnother = rowContainer.next();
-					expect(addAnother.is("a")).toBeTruthy();
-					expect(addAnother.html()).toEqual("add");
-				});
-
 			});
 		});
 	});
@@ -215,7 +191,7 @@ describe("OData Filter UI", function () {
 							{
 								return fieldName;
 							}
-							
+
 							return "[" + fieldName + "]"
 						}
 					});
@@ -226,6 +202,7 @@ describe("OData Filter UI", function () {
 				rowContainer = $("#filter").next();
 				addAnother = rowContainer.next();
 
+				addAnother.click();
 				row = container.find("ol").last();				
 				row.find("select.filterField option").filter(function() {
 				    return $(this).text() == "First Name"; 
@@ -269,12 +246,9 @@ describe("OData Filter UI", function () {
 				
 				describe("When there are no rows", function () {
 
-					beforeEach(function() {
-						row = container.find("ol");
-						removeButton = row.find(".filterRemove");
-						removeButton.click();
-
+					beforeEach(function() {	
 						addAnother.click();
+						row = container.find("ol");
 					});
 
 					it("Should remove the 'no filters' message", function () {
@@ -282,11 +256,48 @@ describe("OData Filter UI", function () {
 						expect(message.length).toEqual(0);
 					});
 
+					it("Should the add a blank filter row", function () {
+						row = container.find("ol");
+						expect(row.length).toEqual(1);
+					})
+
+					it("Should populate the filter row with a field drop down in an li", function () {
+						field = row.find("select.filterField");
+						expect(field.length).toEqual(1);
+						expect(field.parent().is("li")).toBeTruthy();
+					});
+
+					it("Should populate the filter row with an operator drop down in an li", function () {
+						operator = row.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("Should populate the filter row with a value field in an li", function () {
+						value = row.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.parent().is("li")).toBeTruthy();
+					});
+
+					it("Should populate the filter row with a remove link in an li", function () {
+						remove = row.find("a.filterRemove");
+						expect(remove.length).toEqual(1);
+						expect(remove.html()).toEqual("remove");
+						expect(remove.parent().is("li")).toBeTruthy();
+					});
+
+					it("Should add the button to allow adding new filter rows", function () {
+						addAnother = rowContainer.next();
+						expect(addAnother.is("a")).toBeTruthy();
+						expect(addAnother.html()).toEqual("add");
+					});
+
 				});
 
 				describe("When there are existing rows", function () {
 
 					beforeEach(function() {
+						addAnother.click();
 						addAnother.click();
 					});
 
@@ -309,6 +320,7 @@ describe("OData Filter UI", function () {
 				describe("When there is only one row", function () {
 
 					beforeEach(function() {
+						addAnother.click();
 						row = container.find("ol").last();
 						removeButton = row.find(".filterRemove");
 						removeButton.click();
@@ -325,6 +337,7 @@ describe("OData Filter UI", function () {
 				describe("When there is more than one row", function () {
 
 					beforeEach(function() {
+						addAnother.click();
 						addAnother.click();
 
 						row = container.find("ol").last();
@@ -349,6 +362,7 @@ describe("OData Filter UI", function () {
 			describe("Selecting a string field", function () {
 
 				beforeEach(function() {
+					addAnother.click();
 					row = container.find("ol").last();
 
 					// Ensure that we are changing from a different value ui
@@ -381,6 +395,7 @@ describe("OData Filter UI", function () {
 			describe("Selecting an int field", function () {
 
 				beforeEach(function() {
+					addAnother.click();
 					row = container.find("ol").last();
 
 					// Ensure that we are changing from a different value ui
@@ -410,9 +425,10 @@ describe("OData Filter UI", function () {
 
 			});
 
-			describe("Selecting an bool field", function () {
+			describe("Selecting a bool field", function () {
 
 				beforeEach(function() {
+					addAnother.click();
 					row = container.find("ol").last();
 
 					// Ensure that we are changing from a different value ui
@@ -447,6 +463,7 @@ describe("OData Filter UI", function () {
 				describe("With default values", function () {
 
 					beforeEach(function () {
+						addAnother.click();
 						row = container.find("ol").last(); 
 					});
 
@@ -483,13 +500,7 @@ describe("OData Filter UI", function () {
 				});
 
 				describe("With no filters", function () {
-
-					beforeEach(function () {
-						row = container.find("ol").last(); 
-						removeButton = row.find(".filterRemove");
-						removeButton.click();
-					});
-
+	
 					it("Should return an empty string",function ()
 					{					
 						expect(model.getODataFilter()).toEqual("");
@@ -502,6 +513,7 @@ describe("OData Filter UI", function () {
 					describe("Comparison operators", function () {
 
 						beforeEach(function() {
+							addAnother.click();
 							row = container.find("ol").last();
 							
 							row.find("select.filterField option").filter(function() {
@@ -535,6 +547,7 @@ describe("OData Filter UI", function () {
 					describe("String functions", function () {
 
 						beforeEach(function() {
+							addAnother.click();
 							row = container.find("ol").last();
 							
 							row.find("select.filterField option").filter(function() {
@@ -568,6 +581,7 @@ describe("OData Filter UI", function () {
 				describe("With integer fields", function () {
 
 					beforeEach(function() {
+						addAnother.click();
 						row = container.find("ol").last();
 
 						row.find("select.filterField option").filter(function() {
@@ -589,6 +603,7 @@ describe("OData Filter UI", function () {
 				describe("With bool fields", function () {
 
 					beforeEach(function() {
+						addAnother.click();
 						row = container.find("ol").last();
 
 						row.find("select.filterField option").filter(function() {

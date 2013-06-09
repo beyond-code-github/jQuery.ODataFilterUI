@@ -2,13 +2,6 @@
 
     $.fn.oDataFilterUI = function (options)
     {
-        var settings = $.extend({
-            Fields: [],
-            fieldNameModifier: function (fieldname) { 
-                return fieldname; 
-            }
-        }, options );
-
         // Convert input to hidden
         this.attr("type", "hidden");
 
@@ -92,8 +85,16 @@
             return row;
         };
 
+        // Construct settings from defaults
+        var settings = $.extend({
+            Fields: [],
+            fieldNameModifier: function (fieldname) { 
+                return fieldname; 
+            }
+        }, options );
+
         // Model constructor
-        var filterRows = ko.observableArray([createRow()]);
+        var filterRows = ko.observableArray([]);
         var fields = ko.observableArray(settings.Fields);
 
         var removeFilter = function (filter) {
