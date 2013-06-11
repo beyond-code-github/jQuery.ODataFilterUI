@@ -259,6 +259,31 @@ describe("OData Filter UI", function () {
 
 			});
 
+			describe("When using array filters with count", function() {
+
+				beforeEach(function () {
+
+					addAnother.click();
+					row = container.find("ol").last();				
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "Tags"; 
+					}).prop('selected', true);
+					row.find("select.filterField").change();
+
+					row.find("select.filterOperator").val("count").change();
+					
+					childrow = row.find("ol");
+					childrow.find("select.filterOperator").val("gt").change();
+					childrow.find("input.filterValue").val(3).change();
+				});
+
+
+				it("should correctly apply the function only to the first part of the accessor", function () {
+					expect(model.getODataFilter()).toEqual("$filter=Tags/count() gt 3")
+				});	
+
+			});
+
 
 		});
 
@@ -411,7 +436,7 @@ describe("OData Filter UI", function () {
 								it("Should construct the odata string correctly", function () {
 									expect(model.getODataFilter()).toEqual("$filter=Tags/any(value: value/Value eq 'Best Practice')");
 								});
-								
+
 							});
 
 						});

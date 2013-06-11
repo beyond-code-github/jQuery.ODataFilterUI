@@ -58,7 +58,7 @@
 
         var filterFieldNumberLi = $('<input>', { class: "filterValue", type: "number", "data-bind": "value: Value" })
             .appendTo(row).wrap($("<li>")).parent();
-        filterFieldNumberLi.before("<!-- ko if: Field() && Field().type == 'int' -->")
+        filterFieldNumberLi.before("<!-- ko if: Field() && (Field().type == 'int' || Field().type == 'count') -->")
         filterFieldNumberLi.after("<!-- /ko -->")
 
         var filterFieldDateLi = $('<input>', { class: "filterValue", type: "datetime-local", "data-bind": "value: Value" })
@@ -110,6 +110,7 @@
                 var fieldType = field() ? field().type : "string";
                 switch (fieldType) {
                     case "int":
+                    case "count":
                     case "datetime":
                         result.push({ text: "Greater than", value: "gt" });
                         result.push({ text: "Greater than or equals", value: "ge" });
@@ -164,7 +165,7 @@
                             switch (operatorValue)
                             {
                                 case "count":
-                                    row.Field({ text: "count", value: field().value + "/count()", type: "int" });
+                                    row.Field({ text: "count", value: field().value, type: "count" });
                                     break;
                                 case "any":                    
                                 case "all":
@@ -179,7 +180,7 @@
                     switch (operatorValue)
                     {
                         case "count":
-                            row.Field({ text: "count", value: field().value + "/count()", type: "int" });
+                            row.Field({ text: "count", value: field().value, type: "count" });
                             break;
                         case "any":                    
                         case "all":
@@ -253,6 +254,9 @@
                     return part;
                 case "bool":
                     part = part + (row.Value() ? row.Value() : false);
+                    return part;
+                case "count":
+                     part = fieldName + "/count() " + row.Operator() + " " + (row.Value() ? row.Value() : 0);
                     return part;
                 default:
 
