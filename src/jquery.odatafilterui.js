@@ -1,5 +1,21 @@
 (function($) {
 
+    var fieldsHtml;
+
+    var fieldTemplateEngine = new ko.nativeTemplateEngine();
+    fieldTemplateEngine.makeTemplateSource = function (template) {
+        return { text: function() { return fieldsHtml; } }
+    };
+
+    ko.bindingHandlers["fieldTemplate"] = {
+        update: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            var options = ko.utils.unwrapObservable(valueAccessor());
+
+            options.templateEngine = fieldTemplateEngine;
+            ko.renderTemplate(null, bindingContext.createChildContext(options.data), options, element, "replaceNode");
+        }
+    }
+
     $.fn.oDataFilterUI = function (options)
     {
         // Convert input to hidden
@@ -12,19 +28,24 @@
         noFilterMessage.before("<!-- ko if: !FilterRows() || FilterRows().length == 0 -->")
         noFilterMessage.after("<!-- /ko -->")
      
-        var rowContainer = $('<div>', { "data-bind": "foreach: FilterRows" }).insertAfter(this);
-        var row = $('<ol>').appendTo(rowContainer);
-        
-        // Append input elements
-        var filterField = $('<select>', { class: "filterField", "data-bind": "value: Field, options: $parent.Fields, optionsText: 'text'" })
-            .appendTo(row).wrap($("<li>"));
+        var rowContainer = $('<div>', { "data-bind": "fieldTemplate: { data: $root }" }).insertAfter(this);
+                
+        var repeater = $('<div>', { "data-bind" : "foreach: FilterRows" });
+        var row = $('<ol>').appendTo(repeater);
+
+        //Append input elements
+        var filterFieldLi = $('<select>', { class: "filterField", "data-bind": "value: Field, options: $parent.Fields, optionsText: 'text'" })
+            .appendTo(row).wrap($("<li>")).parent();
+        filterFieldLi.before("<!-- ko if: $parent.Fields -->")
+        filterFieldLi.after("<!-- /ko -->")
+
         var operatorField = $('<select>', { class: "filterOperator", "data-bind": "value: Operator, options: OperatorsList, optionsText: 'text', optionsValue: 'value'" })
             .appendTo(row).wrap($("<li>"));
         
-        var filterFieldLi = $('<input>', { class: "filterValue", type: "text", "data-bind": "value: Value" })
+        var filterValueLi = $('<input>', { class: "filterValue", type: "text", "data-bind": "value: Value" })
             .appendTo(row).wrap($("<li>")).parent();
-        filterFieldLi.before("<!-- ko if: (Field() && Field().type == 'string') || !Field() -->")
-        filterFieldLi.after("<!-- /ko -->")
+        filterValueLi.before("<!-- ko if: (Field() && Field().type == 'string') -->")
+        filterValueLi.after("<!-- /ko -->")
 
         var filterFieldNumberLi = $('<input>', { class: "filterValue", type: "number", "data-bind": "value: Value" })
             .appendTo(row).wrap($("<li>")).parent();
@@ -41,11 +62,22 @@
         filterFieldBoolLi.before("<!-- ko if: Field() && Field().type == 'bool' -->")
         filterFieldBoolLi.after("<!-- /ko -->")
 
-        var removeButton = $('<a>', { class: "filterRemove", href: "#", "data-bind": "click: $parent.removeFilter" })
+        var filterComplexLi = $('<div>', { "data-bind": "fieldTemplate: { data: $data }" })
+            .appendTo(row).wrap($("<li>")).parent();
+        filterComplexLi.before("<!-- ko if: Field() && Field().type == 'array[string]' -->")
+        filterComplexLi.after("<!-- /ko -->")
+
+        var removeButtonLi = $('<a>', { class: "filterRemove", href: "#", "data-bind": "click: $parent.removeFilter" })
             .html("remove")
-            .appendTo(row).wrap($("<li>"));
+            .appendTo(row).wrap($("<li>")).parent();
+        removeButtonLi.before("<!-- ko if: $parent.Fields -->")
+        removeButtonLi.after("<!-- /ko -->")
+
 
         var addAnother = $('<a>', { class: "addAnother", href: "#", "data-bind": "click: addAnother"  }).html("add").appendTo(container);
+
+        //add fields template last
+        fieldsHtml = repeater.wrap($("<div>")).parent().html();
 
         // Row model constructor
         var createRow = function () {
@@ -76,10 +108,44 @@
                         result.push({ text: "Ends With", value: "endswith" });
                         result.push({ text: "Contains", value: "contains" });
                         break;
+                    case "array[string]":
+                        result = [];
+                        result.push({ text: "Any", value: "any" });
+                        result.push({ text: "All", value: "all" });
+                        result.push({ text: "Count", value: "count" });
+                        break;
                 }                
                 
                 return result;
             }, null, { deferEvaluation: true });
+
+            var subRows = ko.computed(function () {
+
+                var result = [];
+                var fieldType = field() ? field().type : "string";
+
+                operator(null);
+
+                if (fieldType == "array[string]")
+                {
+                    var row = createRow();
+                    var operatorValue = operator() ? operator() : "any";
+                    switch (operatorValue)
+                    {
+                        case "count":
+                            row.Field({ text: "count", value: field().value + "/count()", type: "int" });
+                            break;
+                        case "any":                    
+                        case "all":
+                            row.Field({ text: "value", value: "value", type: "string" });
+                    }
+
+                    result.push(row);
+                }
+
+                return result;
+
+            }, null, { deferEvaluation: true});
 
             var row = {};
             row.Field = field;
@@ -87,6 +153,7 @@
             row.Operator = operator;
             row.Value = value;
             row.OperatorsList = operatorsList;
+            row.FilterRows = subRows;
 
             return row;
         };
@@ -114,12 +181,9 @@
             filterRows.push(createRow());
         };
 
-        var getODataFilter = ko.computed(function() {
-            var filters = [];
-            for (var index in filterRows())
-            {
-                var row = filterRows()[index];
-                var fieldName = settings.fieldNameModifier(row.FieldName());
+        var buildFilterStringForRow = function (row)
+        {
+            var fieldName = settings.fieldNameModifier(row.FieldName());
                 var part = fieldName + " " + row.Operator() + " ";
                 switch(row.Field().type)
                 {
@@ -139,21 +203,67 @@
                             default:
                                 part = part + "'" + (row.Value() ? row.Value() : "") + "'";
                         }
-                        filters.push(part);
-                        break;
+                        return part;
                     case "int":
                         part = part + (row.Value() ? row.Value() : 0);
-                        filters.push(part);
-                        break;
+                        return part;
                     case "datetime":
                         part = part + "datetime'" + (row.Value() ? row.Value() : "1753-01-01T00:00") + "'";
-                        filters.push(part);
-                        break;
+                        return part;
                     case "bool":
                         part = part + (row.Value() ? row.Value() : false);
-                        filters.push(part);
+                        return part;
+                    case "array[string]":
+                        switch (row.Operator())
+                        {
+                            case "any":
+                            case "all":
+                                var filter = fieldName + "/" + row.Operator() + "(value: ";
+                                var subfilters = [];
+
+                                for (var index in row.FilterRows())
+                                {
+                                    var subRow = row.FilterRows()[index];
+                                    var part = buildFilterStringForRow(subRow);
+                                    subfilters.push(part);
+                                }
+
+                                if (subfilters.length > 0)
+                                {
+                                    filter = filter + subfilters.join(" and ");    
+                                }
+
+                                filter = filter + ")";
+                                return filter;
+                            case "count":
+                                var filter;
+                                var subfilters = [];
+
+                                for (var index in row.FilterRows())
+                                {
+                                    var subRow = row.FilterRows()[index];
+                                    var part = buildFilterStringForRow(subRow);
+                                    subfilters.push(part);
+                                }
+
+                                if (subfilters.length > 0)
+                                {
+                                    filter = subfilters.join(" and ");    
+                                }
+
+                                return filter;
+                        }                       
                         break;
                 }
+        }
+
+        var getODataFilter = ko.computed(function() {
+            var filters = [];
+            for (var index in filterRows())
+            {
+                var row = filterRows()[index];
+                var part = buildFilterStringForRow(row);
+                filters.push(part);
             }
 
             if (filters.length > 0)

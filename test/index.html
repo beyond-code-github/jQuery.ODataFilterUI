@@ -9,7 +9,7 @@
 
 	<script type="text/javascript" src="lib/jquery-1.10.1.js"></script>
 	<script type="text/javascript" src="lib/knockout-2.2.1.debug.js"></script>
-	<script type="text/javascript" src="../src/jquery.odatafilterui.min.js"></script>
+	<script type="text/javascript" src="../src/jquery.odatafilterui.js"></script>
 	<script type="text/javascript">
 
 	window.Model = $("#filter").oDataFilterUI({ Fields: [ 
@@ -17,7 +17,8 @@
 		{ text: "Last Name", value: "LastName", type: "string" }, 
 		{ text: "Age", value: "Age", type: "int" },
 		{ text: "Is Activated", value: "IsActivated", type: "bool" },
-		{ text: "Date of Birth", value: "DateOfBirth", type: "datetime" }]
+		{ text: "Date of Birth", value: "DateOfBirth", type: "datetime" },
+		{ text: "Tags", value: "Tags", type: "array[string]" }]
 	}).Model;
 
 	</script>
