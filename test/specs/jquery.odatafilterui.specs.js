@@ -183,11 +183,12 @@ describe("OData Filter UI", function () {
 					{ 
 						Fields: [ 
 							{ text: "First Name", value: "FirstName", type: "string" },
-							{ text: "Tags", value: "Tags", type: "string" }, 
+							{ text: "TagString", value: "TagString", type: "string" }, 
 							{ text: "Age", value: "Age", type: "int" },
-							{ text: "Is Activated", value: "IsActivated", type: "bool" }],
+							{ text: "Is Activated", value: "IsActivated", type: "bool" },
+							{ text: "Tags", value: "Tags", type: "array[string]" }],
 						fieldNameModifier: function (fieldName) {
-							if (fieldName == "Tags") 
+							if (fieldName == "Tags" || fieldName == "TagString") 
 							{
 								return fieldName;
 							}
@@ -202,27 +203,62 @@ describe("OData Filter UI", function () {
 				rowContainer = $("#filter").next();
 				addAnother = rowContainer.next();
 
-				addAnother.click();
-				row = container.find("ol").last();				
-				row.find("select.filterField option").filter(function() {
-				    return $(this).text() == "First Name"; 
-				}).prop('selected', true);
-				row.find("select.filterField").change();
-				row.find("input.filterValue").val("Pete").change();
+			});
 
-				addAnother.click();
-				row = container.find("ol").last();				
-				row.find("select.filterField option").filter(function() {
-				    return $(this).text() == "Tags"; 
-				}).prop('selected', true);
-				row.find("select.filterField").change();
-				row.find("input.filterValue").val("Best Practice").change();
+			describe("When using basic comparison filters", function() {
+
+				beforeEach(function () {
+
+					addAnother.click();
+					row = container.find("ol").last();				
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "First Name"; 
+					}).prop('selected', true);
+					row.find("select.filterField").change();
+					row.find("input.filterValue").val("Pete").change();
+
+					addAnother.click();
+					row = container.find("ol").last();				
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "TagString"; 
+					}).prop('selected', true);
+					row.find("select.filterField").change();
+					row.find("input.filterValue").val("Best Practice").change();
+
+				});
+
+
+				it("should use the function when building the odata string", function () {
+					expect(model.getODataFilter()).toEqual("$filter=[FirstName] eq 'Pete' and TagString eq 'Best Practice'")
+				});	
 
 			});
 
-			it("should use the function when building the odata string", function () {
-				expect(model.getODataFilter()).toEqual("$filter=[FirstName] eq 'Pete' and Tags eq 'Best Practice'")
+			describe("When using array filters with any or all", function() {
+
+				beforeEach(function () {
+
+					addAnother.click();
+					row = container.find("ol").last();				
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "Tags"; 
+					}).prop('selected', true);
+					row.find("select.filterField").change();
+
+					row.find("select.filterOperator").val("any").change();
+					
+					childrow = row.find("ol");
+					childrow.find("select.filterOperator").val("eq").change();
+					childrow.find("input.filterValue").val("Best Practice").change();
+				});
+
+
+				it("should not use the function when referring to the inner param", function () {
+					expect(model.getODataFilter()).toEqual("$filter=Tags/any(value: value eq 'Best Practice')")
+				});	
+
 			});
+
 
 		});
 

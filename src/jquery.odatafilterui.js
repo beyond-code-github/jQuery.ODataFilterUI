@@ -181,80 +181,82 @@
             filterRows.push(createRow());
         };
 
-        var buildFilterStringForRow = function (row)
+        var buildFilterStringForRow = function (row, modifyFieldName)
         {
-            var fieldName = settings.fieldNameModifier(row.FieldName());
-                var part = fieldName + " " + row.Operator() + " ";
-                switch(row.Field().type)
-                {
-                    case "string":
-                        var stringValue = "'" + (row.Value() ? row.Value() : "") + "'";
-                        switch (row.Operator())
-                        {
-                            case "startswith":
-                                part = "startswith(" + fieldName + "," + stringValue + ")";
-                                break;
-                            case "endswith":
-                                part = "endswith(" + fieldName + "," + stringValue + ")";
-                                break;
-                            case "contains":
-                                part = "substringof(" + stringValue + "," + fieldName + ")";
-                                break;
-                            default:
-                                part = part + "'" + (row.Value() ? row.Value() : "") + "'";
-                        }
-                        return part;
-                    case "int":
-                        part = part + (row.Value() ? row.Value() : 0);
-                        return part;
-                    case "datetime":
-                        part = part + "datetime'" + (row.Value() ? row.Value() : "1753-01-01T00:00") + "'";
-                        return part;
-                    case "bool":
-                        part = part + (row.Value() ? row.Value() : false);
-                        return part;
-                    case "array[string]":
-                        switch (row.Operator())
-                        {
-                            case "any":
-                            case "all":
-                                var filter = fieldName + "/" + row.Operator() + "(value: ";
-                                var subfilters = [];
+            modifyFieldName = typeof modifyFieldName !== 'undefined' ? modifyFieldName : true;
 
-                                for (var index in row.FilterRows())
-                                {
-                                    var subRow = row.FilterRows()[index];
-                                    var part = buildFilterStringForRow(subRow);
-                                    subfilters.push(part);
-                                }
+            var fieldName = modifyFieldName ? settings.fieldNameModifier(row.FieldName()) : row.FieldName();
+            var part = fieldName + " " + row.Operator() + " ";
+            switch(row.Field().type)
+            {
+                case "string":
+                    var stringValue = "'" + (row.Value() ? row.Value() : "") + "'";
+                    switch (row.Operator())
+                    {
+                        case "startswith":
+                            part = "startswith(" + fieldName + "," + stringValue + ")";
+                            break;
+                        case "endswith":
+                            part = "endswith(" + fieldName + "," + stringValue + ")";
+                            break;
+                        case "contains":
+                            part = "substringof(" + stringValue + "," + fieldName + ")";
+                            break;
+                        default:
+                            part = part + "'" + (row.Value() ? row.Value() : "") + "'";
+                    }
+                    return part;
+                case "int":
+                    part = part + (row.Value() ? row.Value() : 0);
+                    return part;
+                case "datetime":
+                    part = part + "datetime'" + (row.Value() ? row.Value() : "1753-01-01T00:00") + "'";
+                    return part;
+                case "bool":
+                    part = part + (row.Value() ? row.Value() : false);
+                    return part;
+                case "array[string]":
+                    switch (row.Operator())
+                    {
+                        case "any":
+                        case "all":
+                            var filter = fieldName + "/" + row.Operator() + "(value: ";
+                            var subfilters = [];
 
-                                if (subfilters.length > 0)
-                                {
-                                    filter = filter + subfilters.join(" and ");    
-                                }
+                            for (var index in row.FilterRows())
+                            {
+                                var subRow = row.FilterRows()[index];
+                                var part = buildFilterStringForRow(subRow, false);
+                                subfilters.push(part);
+                            }
 
-                                filter = filter + ")";
-                                return filter;
-                            case "count":
-                                var filter;
-                                var subfilters = [];
+                            if (subfilters.length > 0)
+                            {
+                                filter = filter + subfilters.join(" and ");    
+                            }
 
-                                for (var index in row.FilterRows())
-                                {
-                                    var subRow = row.FilterRows()[index];
-                                    var part = buildFilterStringForRow(subRow);
-                                    subfilters.push(part);
-                                }
+                            filter = filter + ")";
+                            return filter;
+                        case "count":
+                            var filter;
+                            var subfilters = [];
 
-                                if (subfilters.length > 0)
-                                {
-                                    filter = subfilters.join(" and ");    
-                                }
+                            for (var index in row.FilterRows())
+                            {
+                                var subRow = row.FilterRows()[index];
+                                var part = buildFilterStringForRow(subRow);
+                                subfilters.push(part);
+                            }
 
-                                return filter;
-                        }                       
-                        break;
-                }
+                            if (subfilters.length > 0)
+                            {
+                                filter = subfilters.join(" and ");    
+                            }
+
+                            return filter;
+                    }                       
+                    break;
+            }
         }
 
         var getODataFilter = ko.computed(function() {
