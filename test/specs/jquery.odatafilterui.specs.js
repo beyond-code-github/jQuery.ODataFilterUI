@@ -36,8 +36,8 @@ describe("OData Filter UI", function () {
 
 				beforeEach(function () {
 					fields = [
-					{ text: "First Name", value: "FirstName" },
-					{ text: "Last Name", value: "LastName" }];
+					{ text: "First Name", value: "FirstName", type: "string" },
+					{ text: "Last Name", value: "LastName", type: "string" }];
 
 					filterControl = $("#filter").oDataFilterUI({ Fields: fields });
 					model = filterControl.Model;
@@ -259,6 +259,200 @@ describe("OData Filter UI", function () {
 
 			});
 
+
+		});
+
+		describe("With custom types", function () {
+
+			describe("When custom type has a single value", function () {
+
+				describe("Used as an array", function () {
+
+					beforeEach(function () {
+						filterControl = $("#filter").oDataFilterUI(
+							{ 
+								Fields: [ 
+									{ text: "First Name", value: "FirstName", type: "string" },
+									{ text: "Tags", value: "Tags", type: "array[tag]" }, 
+									{ text: "Age", value: "Age", type: "int" },
+								],
+								CustomTypes: [
+									{
+										name: "tag",
+										fields: [
+											{ text: "Value", value: "Value", type: "string" }
+										]
+									}
+								]
+							});
+						
+						model = filterControl.Model;
+
+						container = $("#filter").parent();
+						rowContainer = $("#filter").next();
+						addAnother = rowContainer.next();
+
+					});
+
+					describe("Selecting a complex array field", function () {
+
+						var filterField, filterValue;
+
+						beforeEach(function() {
+							addAnother.click();
+							row = container.find("ol").first();
+
+							filterField = row.find("> li > select.filterField").first();
+
+							// Ensure that we are changing from a different value ui
+							filterField.find("option").filter(function() {
+							    return $(this).text() == "Age"; 
+							}).prop('selected', true);
+							filterField.change();
+
+							filterField.find("option").filter(function() {
+							    return $(this).text() == "Tags"; 
+							}).prop('selected', true);
+							filterField.change();
+
+							filterOperator = row.find("> li > select.filterOperator").first();
+							filterValue = row.find("> li > input.filterValue").first();
+
+							childrow = row.find("ol");
+						});
+
+						it("Should hide the value input field", function () {
+							expect(filterValue.length).toEqual(0);
+						});
+
+						it("Should only allow any, all & count operators", function () {
+							var values = ko.utils.arrayMap(filterOperator.find("option"), function (item) {
+								return $(item).attr("value");
+							})
+							expect(values).toEqual(['any', 'all', 'count']);
+						});
+
+						it("Should show a child value string field due to 'any' being default and only having one field", function () {
+							value = childrow.find("input.filterValue");
+							expect(value.length).toEqual(1);
+							expect(value.attr("type")).toEqual("text");
+						});
+
+						describe("When selecting count", function () {
+
+							beforeEach(function() {
+								row.find("> li > select.filterOperator").val("count").change();
+								childrow = row.find("ol");
+							});
+
+							it("Should show a child operator drop down", function () {
+								operator = childrow.find("select.filterOperator");
+								expect(operator.length).toEqual(1);
+								expect(operator.parent().is("li")).toBeTruthy();
+							});
+
+							it("The child operator selection should allow all comparison operators", function () {
+								var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+									return $(item).attr("value");
+								})
+								expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+							});
+
+							it("Should show a child value number field", function () {
+								value = childrow.find("input.filterValue");
+								expect(value.length).toEqual(1);
+								expect(value.attr("type")).toEqual("number");
+							});
+
+							it("Should hide the remove link in the child row", function () {
+								remove = childrow.find("a.filterRemove");
+								expect(remove.length).toEqual(0);
+							});
+
+						});
+
+						describe("When selecting any", function () {
+
+							beforeEach(function() {
+								row.find("> li > select.filterOperator").val("any").change();
+								childrow = row.find("ol");
+							});
+
+							it("Should show a child value text field", function () {
+								value = childrow.find("input.filterValue");
+								expect(value.length).toEqual(1);
+								expect(value.attr("type")).toEqual("text");
+								expect(value.parent().is("li")).toBeTruthy();
+							});
+
+							it("Should show a child operator drop down", function () {
+								operator = childrow.find("select.filterOperator");
+								expect(operator.length).toEqual(1);
+								expect(operator.parent().is("li")).toBeTruthy();
+							});
+
+							it("Should not show a child field drop down", function () {
+								field = childrow.find("select.filterField");
+								expect(field.length).toEqual(0);
+							});
+
+							it("Should hide the remove link in the child row", function () {
+								remove = childrow.find("a.filterRemove");
+								expect(remove.length).toEqual(0);
+							});
+
+							describe("With equality comparison", function () {
+
+								beforeEach(function () {
+									childrow.find("select.filterOperator").val("eq").change();
+									childrow.find("input.filterValue").val("Best Practice").change();
+								});
+
+								it("Should construct the odata string correctly", function () {
+									expect(model.getODataFilter()).toEqual("$filter=Tags/any(value: value/Value eq 'Best Practice')");
+								});
+								
+							});
+
+						});
+
+						describe("When selecting all", function () {
+
+							beforeEach(function() {
+								row.find("> li > select.filterOperator").val("all").change();
+								childrow = row.find("ol");
+							});
+
+							it("Should show a child value text field", function () {
+								value = childrow.find("input.filterValue");
+								expect(value.length).toEqual(1);
+								expect(value.attr("type")).toEqual("text");
+								expect(value.parent().is("li")).toBeTruthy();
+							});
+
+							it("Should show a child operator drop down", function () {
+								operator = childrow.find("select.filterOperator");
+								expect(operator.length).toEqual(1);
+								expect(operator.parent().is("li")).toBeTruthy();
+							});
+
+							it("Should not show a child field drop down", function () {
+								field = childrow.find("select.filterField");
+								expect(field.length).toEqual(0);
+							});
+
+							it("Should hide the remove link in the child row", function () {
+								remove = childrow.find("a.filterRemove");
+								expect(remove.length).toEqual(0);
+							});
+
+						});
+
+					});
+
+				});
+
+			});			
 
 		});
 

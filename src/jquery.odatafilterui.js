@@ -18,6 +18,15 @@
 
     $.fn.oDataFilterUI = function (options)
     {
+        // Construct settings from defaults
+        var settings = $.extend({
+            Fields: [],
+            CustomTypes: [],
+            fieldNameModifier: function (fieldname) { 
+                return fieldname; 
+            }
+        }, options );
+
         // Convert input to hidden
         this.attr("type", "hidden");
 
@@ -64,7 +73,7 @@
 
         var filterComplexLi = $('<div>', { "data-bind": "fieldTemplate: { data: $data }" })
             .appendTo(row).wrap($("<li>")).parent();
-        filterComplexLi.before("<!-- ko if: Field() && Field().type == 'array[string]' -->")
+        filterComplexLi.before("<!-- ko if: FieldIsArrayType() -->")
         filterComplexLi.after("<!-- /ko -->")
 
         var removeButtonLi = $('<a>', { class: "filterRemove", href: "#", "data-bind": "click: $parent.removeFilter" })
@@ -72,7 +81,6 @@
             .appendTo(row).wrap($("<li>")).parent();
         removeButtonLi.before("<!-- ko if: $parent.Fields -->")
         removeButtonLi.after("<!-- /ko -->")
-
 
         var addAnother = $('<a>', { class: "addAnother", href: "#", "data-bind": "click: addAnother"  }).html("add").appendTo(container);
 
@@ -84,8 +92,13 @@
             var field = ko.observable();
             var operator = ko.observable();
             var value = ko.observable();
+
             var fieldName = ko.computed(function () {
                 return field().value;
+            }, null, { deferEvaluation: true});
+
+            var fieldIsArrayType = ko.computed(function () {
+                return field().type.indexOf("array[") >= 0;
             }, null, { deferEvaluation: true});
 
             var operatorsList = ko.computed(function() {
@@ -108,15 +121,21 @@
                         result.push({ text: "Ends With", value: "endswith" });
                         result.push({ text: "Contains", value: "contains" });
                         break;
-                    case "array[string]":
-                        result = [];
-                        result.push({ text: "Any", value: "any" });
-                        result.push({ text: "All", value: "all" });
-                        result.push({ text: "Count", value: "count" });
+                    default:
+
+                        if (fieldType.indexOf("array[") >= 0)
+                        {
+                            result = [];
+                            result.push({ text: "Any", value: "any" });
+                            result.push({ text: "All", value: "all" });
+                            result.push({ text: "Count", value: "count" });                            
+                        }
+
                         break;
                 }                
                 
                 return result;
+
             }, null, { deferEvaluation: true });
 
             var subRows = ko.computed(function () {
@@ -126,10 +145,37 @@
 
                 operator(null);
 
-                if (fieldType == "array[string]")
+                if (field().type.indexOf("array[") >= 0)
                 {
+                    var arrayType = field().type.replace("array[", "").replace("]", "");
+                    var customType = ko.utils.arrayFirst(settings.CustomTypes, function (item) {
+                        return item.name == arrayType;
+                    });                   
+
                     var row = createRow();
                     var operatorValue = operator() ? operator() : "any";
+
+                    var underlyingType = arrayType;
+                    if (customType)
+                    {
+                        if (customType.fields && customType.fields.length == 1)
+                        {
+                            var subfield = customType.fields[0];
+                            switch (operatorValue)
+                            {
+                                case "count":
+                                    row.Field({ text: "count", value: field().value + "/count()", type: "int" });
+                                    break;
+                                case "any":                    
+                                case "all":
+                                    row.Field({ text: "value", value: "value/" + subfield.value, type: subfield.type });
+                            }
+
+                            result.push(row);
+                            return result;
+                        }
+                    }
+
                     switch (operatorValue)
                     {
                         case "count":
@@ -137,7 +183,7 @@
                             break;
                         case "any":                    
                         case "all":
-                            row.Field({ text: "value", value: "value", type: "string" });
+                            row.Field({ text: "value", value: "value", type: underlyingType });
                     }
 
                     result.push(row);
@@ -150,6 +196,7 @@
             var row = {};
             row.Field = field;
             row.FieldName = fieldName;
+            row.FieldIsArrayType = fieldIsArrayType;
             row.Operator = operator;
             row.Value = value;
             row.OperatorsList = operatorsList;
@@ -157,14 +204,6 @@
 
             return row;
         };
-
-        // Construct settings from defaults
-        var settings = $.extend({
-            Fields: [],
-            fieldNameModifier: function (fieldname) { 
-                return fieldname; 
-            }
-        }, options );
 
         // Model constructor
         var filterRows = ko.observableArray([]);
@@ -215,46 +254,52 @@
                 case "bool":
                     part = part + (row.Value() ? row.Value() : false);
                     return part;
-                case "array[string]":
-                    switch (row.Operator())
+                default:
+
+                    if (row.Field().type.indexOf("array[") >= 0)
                     {
-                        case "any":
-                        case "all":
-                            var filter = fieldName + "/" + row.Operator() + "(value: ";
-                            var subfilters = [];
+                        var arrayType = row.Field().type.replace("array[", "").replace("]", "");
+                    
+                        switch (row.Operator())
+                        {
+                            case "any":
+                            case "all":
+                                var filter = fieldName + "/" + row.Operator() + "(value: ";
+                                var subfilters = [];
 
-                            for (var index in row.FilterRows())
-                            {
-                                var subRow = row.FilterRows()[index];
-                                var part = buildFilterStringForRow(subRow, false);
-                                subfilters.push(part);
-                            }
+                                for (var index in row.FilterRows())
+                                {
+                                    var subRow = row.FilterRows()[index];
+                                    var part = buildFilterStringForRow(subRow, false);
+                                    subfilters.push(part);
+                                }
 
-                            if (subfilters.length > 0)
-                            {
-                                filter = filter + subfilters.join(" and ");    
-                            }
+                                if (subfilters.length > 0)
+                                {
+                                    filter = filter + subfilters.join(" and ");    
+                                }
 
-                            filter = filter + ")";
-                            return filter;
-                        case "count":
-                            var filter;
-                            var subfilters = [];
+                                filter = filter + ")";
+                                return filter;
+                            case "count":
+                                var filter;
+                                var subfilters = [];
 
-                            for (var index in row.FilterRows())
-                            {
-                                var subRow = row.FilterRows()[index];
-                                var part = buildFilterStringForRow(subRow);
-                                subfilters.push(part);
-                            }
+                                for (var index in row.FilterRows())
+                                {
+                                    var subRow = row.FilterRows()[index];
+                                    var part = buildFilterStringForRow(subRow);
+                                    subfilters.push(part);
+                                }
 
-                            if (subfilters.length > 0)
-                            {
-                                filter = subfilters.join(" and ");    
-                            }
+                                if (subfilters.length > 0)
+                                {
+                                    filter = subfilters.join(" and ");    
+                                }
 
-                            return filter;
-                    }                       
+                                return filter;
+                        }         
+                    }              
                     break;
             }
         }
