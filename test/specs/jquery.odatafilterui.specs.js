@@ -154,7 +154,7 @@ describe("OData Filter UI", function () {
 				var container, rowContainer, row, field, operator, value, remove, addAnother;
 
 				it("Should make the textbox into a hidden field", function () {
-					expect($("#filter").attr("type")).toEqual("hidden");
+					expect($("#filter").css("display")).toEqual("none");
 				})
 
 				it("Should add a container element", function () {
