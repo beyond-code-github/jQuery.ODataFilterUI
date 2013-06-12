@@ -58,7 +58,7 @@
 
         var filterFieldNumberLi = $('<input>', { class: "filterValue", type: "number", "data-bind": "value: Value" })
             .appendTo(row).wrap($("<li>")).parent();
-        filterFieldNumberLi.before("<!-- ko if: Field() && (Field().type == 'int' || Field().type == 'count') -->")
+        filterFieldNumberLi.before("<!-- ko if: Field() && FieldIsNumeric() -->")
         filterFieldNumberLi.after("<!-- /ko -->")
 
         var filterFieldDateLi = $('<input>', { class: "filterValue", type: "datetime-local", "data-bind": "value: Value" })
@@ -101,6 +101,10 @@
                 return field().type.indexOf("array[") >= 0;
             }, null, { deferEvaluation: true});
 
+            var fieldIsNumeric = ko.computed(function () {
+                return field().type == 'int' || field().type == 'long' || field().type == 'double' || field().type == 'single';
+            }, null, { deferEvaluation: true});
+
             var operatorsList = ko.computed(function() {
                 var result = [
                     { text: "Equals", value: "eq" },
@@ -110,8 +114,10 @@
                 var fieldType = field() ? field().type : "string";
                 switch (fieldType) {
                     case "int":
-                    case "count":
+                    case "long":
                     case "datetime":
+                    case "double":
+                    case "single":
                         result.push({ text: "Greater than", value: "gt" });
                         result.push({ text: "Greater than or equals", value: "ge" });
                         result.push({ text: "Less than", value: "lt" });
@@ -123,13 +129,30 @@
                         result.push({ text: "Contains", value: "contains" });
                         break;
                     default:
-
                         if (fieldType.indexOf("array[") >= 0)
                         {
+                            var arrayType = fieldType.replace("array[", "").replace("]", "");
+                            var customType = ko.utils.arrayFirst(settings.CustomTypes, function (item) {
+                                return item.name == arrayType;
+                            }); 
+
                             result = [];
                             result.push({ text: "Any", value: "any" });
                             result.push({ text: "All", value: "all" });
                             result.push({ text: "Count", value: "count" });                            
+
+                            switch (arrayType) {
+                                case "int":
+                                case "long":
+                                case "double":
+                                case "single":
+                                    result.push({ text: "Sum", value: "sum" });
+                                    result.push({ text: "Average", value: "average" });
+                                case "string":
+                                    result.push({ text: "Min", value: "min" });
+                                    result.push({ text: "Max", value: "max" });
+                                    break;
+                            }
                         }
 
                         break;
@@ -165,11 +188,17 @@
                             switch (operatorValue)
                             {
                                 case "count":
-                                    row.Field({ text: "count", value: field().value, type: "count" });
+                                    row.Field({ text: operatorValue, path: field().value, value: operatorValue + "()", type: "int" });
+                                    break;
+                                case "average":
+                                case "sum":                                    
+                                case "min":
+                                case "max":
+                                    row.Field({ text: operatorValue, path: field().value, value: operatorValue + "()", type: subfield.type });
                                     break;
                                 case "any":                    
                                 case "all":
-                                    row.Field({ text: "value", value: "value/" + subfield.value, type: subfield.type });
+                                    row.Field({ text: "value", path: "value", value: subfield.value, type: subfield.type });
                             }
 
                             result.push(row);
@@ -180,7 +209,13 @@
                     switch (operatorValue)
                     {
                         case "count":
-                            row.Field({ text: "count", value: field().value, type: "count" });
+                            row.Field({ text: operatorValue, path: field().value, value: operatorValue + "()", type: "int" });
+                            break;
+                        case "min":
+                        case "max":
+                        case "average":
+                        case "sum":
+                            row.Field({ text: operatorValue, path: field().value, value: operatorValue + "()", type: underlyingType });
                             break;
                         case "any":                    
                         case "all":
@@ -198,6 +233,7 @@
             row.Field = field;
             row.FieldName = fieldName;
             row.FieldIsArrayType = fieldIsArrayType;
+            row.FieldIsNumeric = fieldIsNumeric;
             row.Operator = operator;
             row.Value = value;
             row.OperatorsList = operatorsList;
@@ -226,7 +262,17 @@
             modifyFieldName = typeof modifyFieldName !== 'undefined' ? modifyFieldName : true;
 
             var fieldName = modifyFieldName ? settings.fieldNameModifier(row.FieldName()) : row.FieldName();
+            if (row.Field().path)
+            {
+                fieldName = row.Field().path + "/" + fieldName;
+            }
+
             var part = fieldName + " " + row.Operator() + " ";
+            if (row.Field().value.indexOf("()") >= 0)
+            {
+                part = row.Field().path + "/" + row.Field().value + " " + row.Operator() + " ";
+            }
+
             switch(row.Field().type)
             {
                 case "string":
@@ -247,6 +293,9 @@
                     }
                     return part;
                 case "int":
+                case "long":
+                case "double":
+                case "single":
                     part = part + (row.Value() ? row.Value() : 0);
                     return part;
                 case "datetime":
@@ -254,9 +303,6 @@
                     return part;
                 case "bool":
                     part = part + (row.Value() ? row.Value() : false);
-                    return part;
-                case "count":
-                     part = fieldName + "/count() " + row.Operator() + " " + (row.Value() ? row.Value() : 0);
                     return part;
                 default:
 
@@ -286,6 +332,10 @@
                                 filter = filter + ")";
                                 return filter;
                             case "count":
+                            case "min":
+                            case "max":
+                            case "average":
+                            case "sum":
                                 var filter;
                                 var subfilters = [];
 

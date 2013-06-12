@@ -484,13 +484,17 @@ describe("OData Filter UI", function () {
 		describe("With common settings", function () {
 
 			beforeEach(function () {
-				filterControl = $("#filter").oDataFilterUI({ Fields: [ 
-					{ text: "First Name", value: "FirstName", type: "string" },
-					{ text: "Last Name", value: "LastName", type: "string" }, 
-					{ text: "Age", value: "Age", type: "int" },
-					{ text: "Is Activated", value: "IsActivated", type: "bool" },
-					{ text: "Date of Birth", value: "DateOfBirth", type: "datetime" },
-					{ text: "Tags", value: "Tags", type: "array[string]" }]
+				filterControl = $("#filter").oDataFilterUI({ 
+					Fields: [ 
+						{ text: "First Name", value: "FirstName", type: "string" },
+						{ text: "Last Name", value: "LastName", type: "string" }, 
+						{ text: "Age", value: "Age", type: "int" },
+						{ text: "MetaScore", value: "MetaScore", type: "double" },
+						{ text: "Is Activated", value: "IsActivated", type: "bool" },
+						{ text: "Date of Birth", value: "DateOfBirth", type: "datetime" },
+						{ text: "User Scores", value: "UserScores", type: "array[double]" },
+						{ text: "Tags", value: "Tags", type: "array[string]" }
+					]
 				});
 				model = filterControl.Model;
 
@@ -682,6 +686,39 @@ describe("OData Filter UI", function () {
 
 			});
 
+			describe("Selecting a double field", function () {
+
+				beforeEach(function() {
+					addAnother.click();
+					row = container.find("ol").last();
+
+					// Ensure that we are changing from a different value ui
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "Is Activated"; 
+					}).prop('selected', true);
+					row.find("select.filterField").change();
+
+					row.find("select.filterField option").filter(function() {
+					    return $(this).text() == "MetaScore"; 
+					}).prop('selected', true);				
+					row.find("select.filterField").change();
+				});
+
+				it("Should change the value input to a number field", function () {
+					row = container.find("ol");
+					expect(row.find("input.filterValue").attr("type")).toEqual("number");
+				})
+
+				it("Should allow all comparison operators", function () {
+					row = container.find("ol");
+					var values = ko.utils.arrayMap(row.find("select.filterOperator option"), function (item) {
+						return $(item).attr("value");
+					})
+					expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+				})
+
+			});
+
 			describe("Selecting a datetime field", function () {
 
 				beforeEach(function() {
@@ -783,7 +820,7 @@ describe("OData Filter UI", function () {
 					var values = ko.utils.arrayMap(filterOperator.find("option"), function (item) {
 						return $(item).attr("value");
 					})
-					expect(values).toEqual(['any', 'all', 'count']);
+					expect(values).toEqual(['any', 'all', 'count', 'min', 'max']);
 				});
 
 				it("Should show a child value string field due to 'any' being default", function () {
@@ -845,6 +882,13 @@ describe("OData Filter UI", function () {
 						expect(operator.parent().is("li")).toBeTruthy();
 					});
 
+					it("The child operator selection should equality comparisons and string functions", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual(['eq', 'ne', 'startswith', 'endswith', 'contains']);
+					});
+
 					it("Should not show a child field drop down", function () {
 						field = childrow.find("select.filterField");
 						expect(field.length).toEqual(0);
@@ -877,9 +921,371 @@ describe("OData Filter UI", function () {
 						expect(operator.parent().is("li")).toBeTruthy();
 					});
 
+					it("The child operator selection should equality comparisons and string functions", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual(['eq', 'ne', 'startswith', 'endswith', 'contains']);
+					});
+
 					it("Should not show a child field drop down", function () {
 						field = childrow.find("select.filterField");
 						expect(field.length).toEqual(0);
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+				describe("When selecting min", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("min").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual(['eq', 'ne', 'startswith', 'endswith', 'contains']);
+					});
+
+					it("Should show a child value text field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("text");
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+				describe("When selecting max", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("max").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual(['eq', 'ne', 'startswith', 'endswith', 'contains']);
+					});
+
+					it("Should show a child value text field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("text");
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+			});
+
+			describe("Selecting a double array field", function () {
+
+				var filterField, filterValue;
+
+				beforeEach(function() {
+					addAnother.click();
+					row = container.find("ol").first();
+
+					filterField = row.find("> li > select.filterField").first();
+
+					// Ensure that we are changing from a different value ui
+					filterField.find("option").filter(function() {
+					    return $(this).text() == "Is Activated"; 
+					}).prop('selected', true);
+					filterField.change();
+
+					filterField.find("option").filter(function() {
+					    return $(this).text() == "User Scores"; 
+					}).prop('selected', true);
+					filterField.change();
+
+					filterOperator = row.find("> li > select.filterOperator").first();
+					filterValue = row.find("> li > input.filterValue").first();
+
+					childrow = row.find("ol");
+				});
+
+				it("Should hide the value input field", function () {
+					expect(filterValue.length).toEqual(0);
+				});
+
+				it("Should allow any, all, count and integer aggregate operators", function () {
+					var values = ko.utils.arrayMap(filterOperator.find("option"), function (item) {
+						return $(item).attr("value");
+					})
+					expect(values).toEqual(['any', 'all', 'count', 'sum', 'average', 'min', 'max']);
+				});
+
+				it("Should show a child value numeric field due to 'any' being default", function () {
+					value = childrow.find("input.filterValue");
+					expect(value.length).toEqual(1);
+					expect(value.attr("type")).toEqual("number");
+				});
+
+				describe("When selecting count", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("count").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+					});
+
+					it("Should show a child value number field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("number");
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+				describe("When selecting any", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("any").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child value number field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("number");
+						expect(value.parent().is("li")).toBeTruthy();
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+					});
+
+					it("Should not show a child field drop down", function () {
+						field = childrow.find("select.filterField");
+						expect(field.length).toEqual(0);
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+				describe("When selecting all", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("all").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child value number field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("number");
+						expect(value.parent().is("li")).toBeTruthy();
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+					});
+
+					it("Should not show a child field drop down", function () {
+						field = childrow.find("select.filterField");
+						expect(field.length).toEqual(0);
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+				describe("When selecting min", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("min").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+					});
+
+					it("Should show a child value number field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("number");
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+				describe("When selecting max", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("max").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+					});
+
+					it("Should show a child value number field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("number");
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+				describe("When selecting sum", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("sum").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+					});
+
+					it("Should show a child value number field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("number");
+					});
+
+					it("Should hide the remove link in the child row", function () {
+						remove = childrow.find("a.filterRemove");
+						expect(remove.length).toEqual(0);
+					});
+
+				});
+
+				describe("When selecting average", function () {
+
+					beforeEach(function() {
+						row.find("> li > select.filterOperator").val("average").change();
+						childrow = row.find("ol");
+					});
+
+					it("Should show a child operator drop down", function () {
+						operator = childrow.find("select.filterOperator");
+						expect(operator.length).toEqual(1);
+						expect(operator.parent().is("li")).toBeTruthy();
+					});
+
+					it("The child operator selection should allow all comparison operators", function () {
+						var values = ko.utils.arrayMap(childrow.find("select.filterOperator option"), function (item) {
+							return $(item).attr("value");
+						})
+						expect(values).toEqual([ 'eq', 'ne', 'gt', 'ge', 'lt', 'le' ]);
+					});
+
+					it("Should show a child value number field", function () {
+						value = childrow.find("input.filterValue");
+						expect(value.length).toEqual(1);
+						expect(value.attr("type")).toEqual("number");
 					});
 
 					it("Should hide the remove link in the child row", function () {
@@ -1155,6 +1561,166 @@ describe("OData Filter UI", function () {
 
 						it("Should construct the odata string correctly", function () {
 							expect(model.getODataFilter()).toEqual("$filter=Tags/count() gt 5");
+						});
+
+					});
+
+					describe("Using the min operator", function() {
+
+						beforeEach(function () {
+							row.find("select.filterOperator").val("min").change();
+							childrow = row.find("ol");
+
+							childrow.find("select.filterOperator").val("eq").change();
+							childrow.find("input.filterValue").val("Best").change();
+						});
+
+						it("Should construct the odata string correctly", function () {
+							expect(model.getODataFilter()).toEqual("$filter=Tags/min() eq 'Best'");
+						});
+
+					});
+
+					describe("Using the max operator", function() {
+
+						beforeEach(function () {
+							row.find("select.filterOperator").val("max").change();
+							childrow = row.find("ol");
+
+							childrow.find("select.filterOperator").val("eq").change();
+							childrow.find("input.filterValue").val("Worst").change();
+						});
+
+						it("Should construct the odata string correctly", function () {
+							expect(model.getODataFilter()).toEqual("$filter=Tags/max() eq 'Worst'");
+						});
+
+					});
+
+				});
+
+				describe("With double array fields", function () {
+					var childrow;
+
+					beforeEach(function() {
+						addAnother.click();
+						row = container.find("ol").first();
+
+						row.find("select.filterField option").filter(function() {
+						    return $(this).text() == "User Scores"; 
+						}).prop('selected', true);
+						row.find("select.filterField").change();		
+					});
+
+					describe("Using the any operator", function() {
+
+						beforeEach(function () {
+							row.find("select.filterOperator").val("any").change();
+							childrow = row.find("ol");
+						});
+
+						describe("With equality comparison", function () {
+
+							beforeEach(function () {
+								childrow.find("select.filterOperator").val("eq").change();
+								childrow.find("input.filterValue").val(45.123).change();
+							});
+
+							it("Should construct the odata string correctly", function () {
+								expect(model.getODataFilter()).toEqual("$filter=UserScores/any(value: value eq 45.123)");
+							});
+						})
+
+						describe("With less than comparison", function () {
+
+							beforeEach(function () {
+								childrow.find("select.filterOperator").val("le").change();
+								childrow.find("input.filterValue").val(45.123).change();
+							});
+
+							it("Should construct the odata string correctly", function () {
+								expect(model.getODataFilter()).toEqual("$filter=UserScores/any(value: value le 45.123)");
+							});
+						})
+
+					});
+
+					describe("Using the count operator", function() {
+
+						beforeEach(function () {
+							row.find("select.filterOperator").val("count").change();
+							childrow = row.find("ol");
+
+							childrow.find("select.filterOperator").val("gt").change();
+							childrow.find("input.filterValue").val(5).change();
+						});
+
+						it("Should construct the odata string correctly", function () {
+							expect(model.getODataFilter()).toEqual("$filter=UserScores/count() gt 5");
+						});
+
+					});
+
+					describe("Using the min operator", function() {
+
+						beforeEach(function () {
+							row.find("select.filterOperator").val("min").change();
+							childrow = row.find("ol");
+
+							childrow.find("select.filterOperator").val("eq").change();
+							childrow.find("input.filterValue").val(4.3).change();
+						});
+
+						it("Should construct the odata string correctly", function () {
+							expect(model.getODataFilter()).toEqual("$filter=UserScores/min() eq 4.3");
+						});
+
+					});
+
+					describe("Using the max operator", function() {
+
+						beforeEach(function () {
+							row.find("select.filterOperator").val("max").change();
+							childrow = row.find("ol");
+
+							childrow.find("select.filterOperator").val("ge").change();
+							childrow.find("input.filterValue").val(42.7).change();
+						});
+
+						it("Should construct the odata string correctly", function () {
+							expect(model.getODataFilter()).toEqual("$filter=UserScores/max() ge 42.7");
+						});
+
+					});
+
+					describe("Using the sum operator", function() {
+
+						beforeEach(function () {
+							row.find("select.filterOperator").val("sum").change();
+							childrow = row.find("ol");
+
+							childrow.find("select.filterOperator").val("ge").change();
+							childrow.find("input.filterValue").val(42.7).change();
+						});
+
+						it("Should construct the odata string correctly", function () {
+							expect(model.getODataFilter()).toEqual("$filter=UserScores/sum() ge 42.7");
+						});
+
+					});
+
+					describe("Using the average operator", function() {
+
+						beforeEach(function () {
+							row.find("select.filterOperator").val("average").change();
+							childrow = row.find("ol");
+
+							childrow.find("select.filterOperator").val("ge").change();
+							childrow.find("input.filterValue").val(42.7).change();
+						});
+
+						it("Should construct the odata string correctly", function () {
+							expect(model.getODataFilter()).toEqual("$filter=UserScores/average() ge 42.7");
 						});
 
 					});
